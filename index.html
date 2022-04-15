@@ -170,7 +170,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2022-04-15 17:55:06 / 修改时间：17:55:21" itemprop="dateCreated datePublished" datetime="2022-04-15T17:55:06+08:00">2022-04-15</time>
+              <time title="创建时间：2022-04-15 18:02:20 / 修改时间：18:03:01" itemprop="dateCreated datePublished" datetime="2022-04-15T18:02:20+08:00">2022-04-15</time>
             </span>
 
           
@@ -216,80 +216,6 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/04/15/initWithString%E3%80%81initWithFormat%E5%8F%8AstringWithFormat%E7%9A%84%E5%8C%BA%E5%88%AB/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Starain">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="星雨">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/04/15/initWithString%E3%80%81initWithFormat%E5%8F%8AstringWithFormat%E7%9A%84%E5%8C%BA%E5%88%AB/" class="post-title-link" itemprop="url">initWithString、initWithFormat及stringWithFormat的区别</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2022-04-15 17:54:31 / 修改时间：17:54:47" itemprop="dateCreated datePublished" datetime="2022-04-15T17:54:31+08:00">2022-04-15</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>其实这几个方法看似没啥区别，用的时候也很少在意，但最近无聊折腾了一下，却发现有些端倪。这里先说Apple的一个优化策略：Tagged Pointer，这里引用大神的文章： iOS Tagged Pointer - 简书。简单来说就是运行时让能用指针地址表达的值就用指针地址表达，不再单独分配内存地址，上个代码先：</p>
-<p>以a的ascii码为基础，依次加一，然后根据新的ascii码生成字符串a、b、c…..i、j，并打印他们的相关信息，打印结果如下：</p>
-<p>打印结果<br>可以看到，通过stringWithFormat创建的字符串的类型是NSTaggedPointerString类型而不是__NSCFString或者__NSCFConstantString类型的。然后再看指针的地址，最后的两位应该是标识位，倒数第一位应该是指定值的类型，倒数第二位表示值的长度，剩下的61到6a是递增的，刚好符合上面代码ascii码的循环加一，61是“a”ascii码的十六进制表示，这就说明了运行时使用了Tagged Pointer技术。为啥要说这些乱七八糟的东西？因为我之前不知道有Tagged Pointer这个高级的东东，在测试NSString相关方法的时候踩了一些坑，所以特此介绍，免得看这篇文章的同学被坑进去，在测试的时候尽量用中文或者长字符串，这样就能够让系统在堆区中给字符串分配内存空间。😂</p>
-<p>接下来回到正题，在使用字面量声明字符串的时候，字符串是放在常量区的，在编译阶段就已经确定，所以以下代码的变量无论声明多少都是引用常量区里面的同一个字符串。</p>
-<p>代码</p>
-<p>打印结果<br>然后来看看stringWithFormat和initWithFormat，一个是类方法，一个是实例方法，stringWithFormat的内存管理方式是autorelease，initWithFormat则需要手动释放（ARC下不用处理，编译器帮我们完成了）。一眼看去好像差别不大。但是stringWithFormat在下面的代码中就有问题了：</p>
-<p>代码</p>
-<p>内存监控<br>内存出现了暴增的现象，这是由于stringWithFormat会在内部对创建的字符串做一次autorelease处理，这就导致了对象的延迟释放，因为这里有个for循环，那么autoreleasepool会等到runloop的当前循环结束后才会对释放池中的每个对象发送release消息，而runloop的当前循环结束的前提是要等for循环执行完，所以for循环内创建的对象就会在for循环执行完之前一直存在在内存中，导致暴增。再来看看initWithFormat：</p>
-<p>代码<br>这里编译器会有一个警告，提示你这是一个弱引用，会在单次循环结束后被释放（这里就已经能够说明问题了），接着我们来看看内存监控：</p>
-<p>内存监控<br>并没有出现暴增的情况，也就是说initWithFormat创建的对象在ARC模式中，for的单次循环结束后就会release一次并被释放（MRC下手动管理）。</p>
-<p>那么习惯使用stringWithFormat的同学就要注意点了，如果存在循环大量的创建字符串，要么我们尽量使用initWithString，非要用stringWithFormat怎么办？其实在循环内加个@autoreleasepool就好了（保证每次for循环都对对象release一次），就像下面这样：</p>
-<p>代码<br>最后，关于initWithString，这个方法如果你传的是字面量，那么编译器会提示你其实可以直接用字面量赋值，如果传的是变量或常量，我猜内部应该是返回的一个拷贝给你（参数是类型是NSString的话就是浅拷贝，NSMutableString就是深拷贝），内部代码我猜是这样的：</p>
-<p>代码<br>放个测试代码：</p>
-<p>代码</p>
-<p>打印<br>主要看str2、str3、str4、str5，str2是字面量赋值的变量，所以值是在常量区，str3是用str2创建的，他们的地址是一样的，说明str3也是引用了常量区的值。str4的值是分配在堆区的，str5跟str4的地址一样，说明引用的是str4在堆中的值地址，所以我推测，initWithString内部只是做了一次copy。</p>
-<p>sorry，废话有点多，就一个小的知识点，如果之前不知道，希望能帮到你，如果你对此非常了解并对我写的有不同的观点，希望能帮我指出不足或错误。</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2022/04/15/OC%E6%96%B9%E6%B3%95%E6%8B%A6%E6%88%AA%E5%99%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -315,7 +241,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2022-04-15 17:53:49 / 修改时间：17:54:09" itemprop="dateCreated datePublished" datetime="2022-04-15T17:53:49+08:00">2022-04-15</time>
+              <time title="创建时间：2022-04-15 18:02:14 / 修改时间：18:02:52" itemprop="dateCreated datePublished" datetime="2022-04-15T18:02:14+08:00">2022-04-15</time>
             </span>
 
           
@@ -370,7 +296,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/04/15/initWithString%E3%80%81initWithFormat%E5%8F%8AstringWithFormat%E7%9A%84%E5%8C%BA%E5%88%AB/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -384,7 +310,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged/" class="post-title-link" itemprop="url">浅谈Unmanaged</a>
+            <a href="/2022/04/15/initWithString%E3%80%81initWithFormat%E5%8F%8AstringWithFormat%E7%9A%84%E5%8C%BA%E5%88%AB/" class="post-title-link" itemprop="url">initWithString、initWithFormat及stringWithFormat的区别</a>
         </h2>
 
         <div class="post-meta">
@@ -395,7 +321,81 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2022-04-15 16:58:34 / 修改时间：16:59:54" itemprop="dateCreated datePublished" datetime="2022-04-15T16:58:34+08:00">2022-04-15</time>
+              <time title="创建时间：2022-04-15 18:02:07 / 修改时间：18:02:38" itemprop="dateCreated datePublished" datetime="2022-04-15T18:02:07+08:00">2022-04-15</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>其实这几个方法看似没啥区别，用的时候也很少在意，但最近无聊折腾了一下，却发现有些端倪。这里先说Apple的一个优化策略：Tagged Pointer，这里引用大神的文章： iOS Tagged Pointer - 简书。简单来说就是运行时让能用指针地址表达的值就用指针地址表达，不再单独分配内存地址，上个代码先：</p>
+<p>以a的ascii码为基础，依次加一，然后根据新的ascii码生成字符串a、b、c…..i、j，并打印他们的相关信息，打印结果如下：</p>
+<p>打印结果<br>可以看到，通过stringWithFormat创建的字符串的类型是NSTaggedPointerString类型而不是__NSCFString或者__NSCFConstantString类型的。然后再看指针的地址，最后的两位应该是标识位，倒数第一位应该是指定值的类型，倒数第二位表示值的长度，剩下的61到6a是递增的，刚好符合上面代码ascii码的循环加一，61是“a”ascii码的十六进制表示，这就说明了运行时使用了Tagged Pointer技术。为啥要说这些乱七八糟的东西？因为我之前不知道有Tagged Pointer这个高级的东东，在测试NSString相关方法的时候踩了一些坑，所以特此介绍，免得看这篇文章的同学被坑进去，在测试的时候尽量用中文或者长字符串，这样就能够让系统在堆区中给字符串分配内存空间。😂</p>
+<p>接下来回到正题，在使用字面量声明字符串的时候，字符串是放在常量区的，在编译阶段就已经确定，所以以下代码的变量无论声明多少都是引用常量区里面的同一个字符串。</p>
+<p>代码</p>
+<p>打印结果<br>然后来看看stringWithFormat和initWithFormat，一个是类方法，一个是实例方法，stringWithFormat的内存管理方式是autorelease，initWithFormat则需要手动释放（ARC下不用处理，编译器帮我们完成了）。一眼看去好像差别不大。但是stringWithFormat在下面的代码中就有问题了：</p>
+<p>代码</p>
+<p>内存监控<br>内存出现了暴增的现象，这是由于stringWithFormat会在内部对创建的字符串做一次autorelease处理，这就导致了对象的延迟释放，因为这里有个for循环，那么autoreleasepool会等到runloop的当前循环结束后才会对释放池中的每个对象发送release消息，而runloop的当前循环结束的前提是要等for循环执行完，所以for循环内创建的对象就会在for循环执行完之前一直存在在内存中，导致暴增。再来看看initWithFormat：</p>
+<p>代码<br>这里编译器会有一个警告，提示你这是一个弱引用，会在单次循环结束后被释放（这里就已经能够说明问题了），接着我们来看看内存监控：</p>
+<p>内存监控<br>并没有出现暴增的情况，也就是说initWithFormat创建的对象在ARC模式中，for的单次循环结束后就会release一次并被释放（MRC下手动管理）。</p>
+<p>那么习惯使用stringWithFormat的同学就要注意点了，如果存在循环大量的创建字符串，要么我们尽量使用initWithString，非要用stringWithFormat怎么办？其实在循环内加个@autoreleasepool就好了（保证每次for循环都对对象release一次），就像下面这样：</p>
+<p>代码<br>最后，关于initWithString，这个方法如果你传的是字面量，那么编译器会提示你其实可以直接用字面量赋值，如果传的是变量或常量，我猜内部应该是返回的一个拷贝给你（参数是类型是NSString的话就是浅拷贝，NSMutableString就是深拷贝），内部代码我猜是这样的：</p>
+<p>代码<br>放个测试代码：</p>
+<p>代码</p>
+<p>打印<br>主要看str2、str3、str4、str5，str2是字面量赋值的变量，所以值是在常量区，str3是用str2创建的，他们的地址是一样的，说明str3也是引用了常量区的值。str4的值是分配在堆区的，str5跟str4的地址一样，说明引用的是str4在堆中的值地址，所以我推测，initWithString内部只是做了一次copy。</p>
+<p>sorry，废话有点多，就一个小的知识点，如果之前不知道，希望能帮到你，如果你对此非常了解并对我写的有不同的观点，希望能帮我指出不足或错误。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Starain">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="星雨">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/" class="post-title-link" itemprop="url">浅谈Unmanaged</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2022-04-15 18:01:49 / 修改时间：18:02:29" itemprop="dateCreated datePublished" datetime="2022-04-15T18:01:49+08:00">2022-04-15</time>
             </span>
 
           
