@@ -23,14 +23,14 @@
 <meta property="og:site_name" content="星雨">
 <meta property="og:description" content="最近学习Swift内存相关的东西，接触到了Unmanaged这个类型，在网上看了很多文档，个人感觉讲的比较晦涩，所以写下这篇笔记方便自己理解和总结。 Unmanaged解决的是在Swift中调用C函数时，C函数返回CoreFoundation类型的对象内存管理相关的问题，它的出现属于历史原因而作为临时的过渡方案。 在ARC下，所有的OC对象和从OC方法返回的CoreFoundation类型的对象都">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/6110389-b8441ac92e47890e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/500">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/6110389-43bdd6c1bc364c56.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/500">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/6110389-820fb7cce4739a3f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="og:image" content="http://example.com/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/image1.png">
+<meta property="og:image" content="http://example.com/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/image2.png">
+<meta property="og:image" content="http://example.com/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/image3.png">
 <meta property="article:published_time" content="2022-04-14T16:00:00.000Z">
-<meta property="article:modified_time" content="2022-04-19T03:00:07.766Z">
+<meta property="article:modified_time" content="2022-04-19T03:41:26.674Z">
 <meta property="article:author" content="Starain">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/6110389-b8441ac92e47890e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/500">
+<meta name="twitter:image" content="http://example.com/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/image1.png">
   
   
   <title>浅谈Unmanaged - 星雨</title>
@@ -250,13 +250,19 @@
 <p>Swift只支持ARC，所以没有retain、release这些方法，在Swift和OC混编的时候，编译器也能很好的帮我们自动管理内存，除了上面说的C函数返回CoreFundation对象。</p>
 <p>举个例子，我们使用苹果的命名规范声明一个C函数：</p>
 <figure class="highlight obj-c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs obj-c"><span class="hljs-comment">//声明</span><br><span class="hljs-built_in">CFStringRef</span> CreateJoinedString(<span class="hljs-built_in">CFStringRef</span> s1, <span class="hljs-built_in">CFStringRef</span> s2);<br><br><span class="hljs-comment">//实现</span><br><span class="hljs-built_in">CFStringRef</span> CreateJoinedString(<span class="hljs-built_in">CFStringRef</span> s1, <span class="hljs-built_in">CFStringRef</span> s2) &#123;<br>    <span class="hljs-built_in">CFMutableStringRef</span> resultString = <span class="hljs-built_in">CFStringCreateMutableCopy</span>(<span class="hljs-literal">NULL</span>, <span class="hljs-number">0</span>, s1);<br>    <span class="hljs-built_in">CFStringAppend</span>(resultString, s2);<br>    <span class="hljs-keyword">return</span> resultString;<br>&#125;<br></code></pre></td></tr></table></figure>
-<p>然后在Swift中进行调用：<br><img src="https://upload-images.jianshu.io/upload_images/6110389-b8441ac92e47890e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/500" srcset="/img/loading.gif" lazyload alt="图1"><br>可以看到桥接到Swift中的方法的返回值是一个Unmanaged<CFString>!类型，为什么会返回这个类型？因为在OC中编译器都不能帮我们自动管理C函数返回的CoreFoundation对象，更别说Swift桥接调用C函数了。所以编译器这时候不知道如何管理这个C函数返回对象的引用计数，在翻译成Swift代码时将其包装成了Unmanaged类型的对象。这个类型现在只关注如下两个方法。</p>
+<p>然后在Swift中进行调用：</p>
+<img src="/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/image1.png" srcset="/img/loading.gif" lazyload class="" title="图1">
+<p>可以看到桥接到Swift中的方法的返回值是一个Unmanaged<CFString>!类型，为什么会返回这个类型？因为在OC中编译器都不能帮我们自动管理C函数返回的CoreFoundation对象，更别说Swift桥接调用C函数了。所以编译器这时候不知道如何管理这个C函数返回对象的引用计数，在翻译成Swift代码时将其包装成了Unmanaged类型的对象。这个类型现在只关注如下两个方法。</p>
 <figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs swift"><span class="hljs-comment">//都是取值，区别在于</span><br><span class="hljs-comment">//这个方法在取值时不会改变引用值的引用计数</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">func</span> <span class="hljs-title function_">takeUnretainedValue</span>() -&gt; <span class="hljs-type">Instance</span><br><span class="hljs-comment">//这个方法返回引用值并对引用值进行一次release（引用计数减1）</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">func</span> <span class="hljs-title function_">takeRetainedValue</span>() -&gt; <span class="hljs-type">Instance</span><br></code></pre></td></tr></table></figure>
 <p>这其实就是将对象的内存管理交给调用者自己处理，相当于在Swift中变相提供了手动release操作。<em><strong>通过调用需要我们手动释放内存的函数而获得的对象时，使用takeRetainedValue进行取值，否则使用takeUnretainedValue</strong></em>，也就是苹果在CoreFoundation中使用Create&#x2F;Get命名方式的那些函数。</p>
 <p>当然我们自己在写这种C函数时要避免在Swift中被包装成Unmanaged类型，可以使用<em><strong>CF_IMPLICIT_BRIDGING_ENABLED</strong></em>和<em><strong>CF_IMPLICIT_BRIDGING_DISABLED</strong></em>这两个宏将函数声明包裹起来，这是告诉clang编译器：不需要为Swift桥接审查和处理这些函数的CoreFoundation类型(即Annotated APIs，向编译器注明该方法可自动管理)</p>
 <figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs objectivec"><span class="hljs-built_in">CF_IMPLICIT_BRIDGING_ENABLED</span><br><br><span class="hljs-built_in">CFStringRef</span> CreateJoinedString(<span class="hljs-built_in">CFStringRef</span> s1, <span class="hljs-built_in">CFStringRef</span> s2);<br><br><span class="hljs-built_in">CF_IMPLICIT_BRIDGING_DISABLED</span><br></code></pre></td></tr></table></figure>
-<p>再回到Swift调用可以看到返回值不在是Unmanaged类型，而是C函数一样直接返回CFString<br><img src="https://upload-images.jianshu.io/upload_images/6110389-43bdd6c1bc364c56.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/500" srcset="/img/loading.gif" lazyload alt="图2"><br>现在大部分CoreFoundation的方法都已经面向Swift进行了优化，返回值没有被Unmanaged包装，但还有部分API没有被注明可自动管理，比如AddressBook。</p>
-<p>查看AddressBook的方法声明，可以看到很多方法的返回值类型是Unmanaged类型<br><img src="https://upload-images.jianshu.io/upload_images/6110389-820fb7cce4739a3f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" srcset="/img/loading.gif" lazyload alt="图3"></p>
+<p>再回到Swift调用可以看到返回值不在是Unmanaged类型，而是C函数一样直接返回CFString</p>
+<img src="/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/image2.png" srcset="/img/loading.gif" lazyload class="" title="图2">
+<p>现在大部分CoreFoundation的方法都已经面向Swift进行了优化，返回值没有被Unmanaged包装，但还有部分API没有被注明可自动管理，比如AddressBook。</p>
+<p>查看AddressBook的方法声明，可以看到很多方法的返回值类型是Unmanaged类型</p>
+<img src="/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/image3.png" srcset="/img/loading.gif" lazyload class="" title="图3">
+
 <p>可能由于苹果来不及对这些API进行处理吧，所以正如文初所说，Umagnage是因为历史原因（Swift 的API桥接OC的API，OC底层又是C的实现）和作为过渡方案的产物。随着Swift的完善，可能会越来越少甚至不会再见到这样的API。自己写的C函数要尽量避免这样的情况。</p>
 <p>参考：<a target="_blank" rel="noopener" href="https://nshipster.cn/unmanaged/">https://nshipster.cn/unmanaged/</a></p>
 

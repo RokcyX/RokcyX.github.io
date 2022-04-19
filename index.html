@@ -279,7 +279,7 @@
       <p class="index-excerpt">
         <a href="/2018/07/02/initWithString%E3%80%81initWithFormat%E5%8F%8AstringWithFormat%E7%9A%84%E5%8C%BA%E5%88%AB/" target="_self">
           
-          其实这几个方法看似没啥区别，用的时候也很少在意，但最近无聊折腾了一下，却发现有些端倪。这里先说Apple的一个优化策略：Tagged Pointer，这里引用大神的文章： iOS Tagged Pointer - 简书。简单来说就是运行时让能用指针地址表达的值就用指针地址表达，不再单独分配内存地址，上个代码先： 以a的ascii码为基础，依次加一，然后根据新的ascii码生成字符串a、b、c…..
+          其实这几个方法看似没啥区别，用的时候也很少在意，但最近无聊折腾了一下，却发现有些端倪。这里先说Apple的一个优化策略：Tagged Pointer，这里引用大神的文章： iOS Tagged Pointer - 简书。简单来说就是运行时让能用指针地址表达的值就用指针地址表达，不再单独分配内存地址，上个代码先：  以a的ascii码为基础，依次加一，然后根据新的ascii码生成字符串a、b、c….
         </a>
       </p>
 
