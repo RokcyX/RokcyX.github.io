@@ -4,6 +4,25 @@
   
   
   <entry>
+    <title>Unity编译项目报错的问题</title>
+    <link href="/2022/05/26/Unity%E7%BC%96%E8%AF%91%E9%A1%B9%E7%9B%AE%E6%8A%A5%E9%94%99%E7%9A%84%E9%97%AE%E9%A2%98/"/>
+    <url>/2022/05/26/Unity%E7%BC%96%E8%AF%91%E9%A1%B9%E7%9B%AE%E6%8A%A5%E9%94%99%E7%9A%84%E9%97%AE%E9%A2%98/</url>
+    
+    <content type="html"><![CDATA[<p>在学习Oculus Quest项目过程中，由于对Android环境不了解，所以在最开始的入门项目就遇到的编译报错的问题，在这里记录下。</p><p>我的报错描述是这样的：</p><img src="/2022/05/26/Unity%E7%BC%96%E8%AF%91%E9%A1%B9%E7%9B%AE%E6%8A%A5%E9%94%99%E7%9A%84%E9%97%AE%E9%A2%98/image1.png" class="" title="图1"><p>从日志描述中可以大致看到是Gradle相关的问题，猜测与Gradle配置有关。</p><p>我按照网上的提示修改了Unity Hub中baseProjectTemplate.gradle文件里的配置代码，将google()和jcenter()改为了指定的国内阿里云的mavaen仓库</p><figure class="highlight fsharp"><table><tr><td class="gutter"><div class="code-wrapper"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></div></td><td class="code"><pre><code class="hljs fsharp"><span class="hljs-keyword">repositories</span> &#123;<span class="hljs-operator">**</span>ARTIFACTORYREPOSITORY<span class="hljs-operator">**</span><br>            <span class="hljs-comment">// google()</span><br>            <span class="hljs-comment">// jcenter()</span><br>            <span class="hljs-keyword">maven</span>&#123; url <span class="hljs-symbol">&#x27;https</span><span class="hljs-operator">:</span><span class="hljs-comment">//maven.aliyun.com/repository/google&#x27; &#125;</span><br>            <span class="hljs-keyword">maven</span>&#123; url <span class="hljs-symbol">&#x27;https</span><span class="hljs-operator">:</span><span class="hljs-comment">//maven.aliyun.com/repository/public&#x27; &#125;</span><br>        &#125;<br><br></code></pre></td></tr></table></figure><p>重新编译发现还是报同样的错误，仔细查看错误描述，这句描述引起了我的注意：</p><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs pgsql"><span class="hljs-keyword">Connect</span> <span class="hljs-keyword">to</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>:<span class="hljs-number">1087</span> [/<span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>] failed: <span class="hljs-keyword">Connection</span> refused (<span class="hljs-keyword">Connection</span> refused)<br><br></code></pre></td></tr></table></figure><p>猜测这句跟代理有关，于是查看文件：~&#x2F;.gradle&#x2F;gradle.properties的内容，找到了下面的配置：</p><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-attr">systemProp.http.proxyHost</span>=<span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span><br><span class="hljs-attr">systemProp.https.proxyHost</span>=<span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span><br><span class="hljs-attr">systemProp.https.proxyPort</span>=<span class="hljs-number">1087</span><br><span class="hljs-attr">systemProp.http.proxyPort</span>=<span class="hljs-number">1087</span><br></code></pre></td></tr></table></figure><p>尝试将proxyPort修改为我自己的梯子的端口，重新编译通过了。</p><p>由于上面修改了mavan仓库为国内地址，索性将gradle.properties文件中的proxy相关配置全部注释，即不适用代理，再次编译也能成功。</p><p>完事儿~</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Unity</category>
+      
+    </categories>
+    
+    
+  </entry>
+  
+  
+  
+  <entry>
     <title>浅谈Unmanaged</title>
     <link href="/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/"/>
     <url>/2022/04/15/%E6%B5%85%E8%B0%88Unmanaged-md/</url>
